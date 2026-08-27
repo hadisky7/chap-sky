@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { initializeApp } from "firebase/app";
 import { getFirestore, collection, onSnapshot, addDoc, deleteDoc, doc, updateDoc, getDoc, setDoc } from "firebase/firestore";
 import "./App.css";
@@ -459,6 +459,7 @@ function App() {
   const [shipping, setShipping] = useState("");
   const [success, setSuccess] = useState(null);
   const [form, setForm] = useState({ name: "", phone: "", desc: "", address: "", postal: "", province: "", city: "" });
+  const lastBody = useRef("");
 
   useEffect(() => {
     const unsub = onSnapshot(collection(db, "products"), (snap) => {
@@ -522,14 +523,12 @@ function App() {
       `💳 روش پرداخت: ${payText}\n` +
       (receiptName ? `🧾 رسید ارسال‌شده: ${receiptName}\n` : "") +
       (fileName ? `📎 فایل طرح: ${fileName}\n` : "") +
-      `\n${DESIGN_NOTE}`;
+      `\n${DESIGN_NOTE}\n\n⚡ پاسخ در کوتاه‌ترین زمان`;
+
+    lastBody.current = body;
 
     // ارسال به واتساپ
     window.open(`https://wa.me/${settings.whatsapp}?text=${encodeURIComponent(body)}`, "_blank");
-    // ارسال به تلگرام
-    window.open(`https://t.me/${settings.telegram}?text=${encodeURIComponent(body)}`, "_blank");
-    // ارسال به روبیکا
-    window.open(`https://rubika.ir/${settings.rubika}?text=${encodeURIComponent(body)}`, "_blank");
 
     try {
       await addDoc(collection(db, "orders"), {
@@ -538,11 +537,10 @@ function App() {
         note: form.desc, file: fileName, receiptName, payMethod: payText,
         items, total, date: new Date().toLocaleString("fa-IR"),
       });
-      setSuccess({ name: form.name, total, shipping, shippingCost, items, payText });
     } catch (err) {
-      alert("خطا در ثبت سفارش در سامانه: " + err.message);
+      console.error("order save:", err);
     }
-
+    setSuccess({ name: form.name, total, shipping, shippingCost, items, payText });
     setOrderOpen(false); setCart([]); setFileName(""); setReceiptName(""); setShipping("");
     setForm({ name: "", phone: "", desc: "", address: "", postal: "", province: "", city: "" });
   };
@@ -823,7 +821,7 @@ function App() {
                 <label htmlFor="design-file" className="file-label">{fileName ? `📄 ${fileName}` : "⬆️ انتخاب فایل طرح"}</label>
               </div>
               <button type="submit" className="primary-button full">ارسال سفارش ✅</button>
-              <small className="form-note">⚠️ با ارسال سفارش، پنجره‌های واتساپ، تلگرام و روبیکا باز می‌شود — لطفاً فایل طرح و عکس رسید را در همان‌ها ارسال کنید.</small>
+              <small className="form-note">⚠️ با ارسال، پنجره‌ی واتساپ باز می‌شود. اگر واتساپ ندارید، از لینک‌های پایین صفحه استفاده کنید.</small>
             </form>
           </div>
         </div>
@@ -844,7 +842,14 @@ function App() {
               <p style={{ fontSize: "13px", color: "#777", marginTop: "10px" }}>💳 {success.payText}</p>
               <p style={{ fontSize: "13px", color: "var(--main)", marginTop: "10px" }}>{DESIGN_NOTE}</p>
             </div>
-            <button className="primary-button full" onClick={() => setSuccess(null)}>باشه</button>
+
+            <div className="contact-links">
+              <a className="contact-btn wa" href={`https://wa.me/${settings.whatsapp}?text=${encodeURIComponent(lastBody.current)}`} target="_blank" rel="noreferrer">💬 ثبت از واتساپ</a>
+              <a className="contact-btn tg" href={`https://t.me/${settings.telegram}`} target="_blank" rel="noreferrer">✈️ ثبت از تلگرام</a>
+              <a className="contact-btn rb" href={`https://rubika.ir/${settings.rubika}`} target="_blank" rel="noreferrer">🔵 ثبت از روبیکا</a>
+            </div>
+            <p style={{ fontSize: "13px", color: "#777", marginTop: "12px", textAlign: "center" }}>⚡ پاسخ در کوتاه‌ترین زمان</p>
+            <button className="primary-button full" onClick={() => setSuccess(null)} style={{ marginTop: "12px" }}>باشه</button>
           </div>
         </div>
       )}
