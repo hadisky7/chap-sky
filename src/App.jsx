@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { initializeApp } from "firebase/app";
 import { getFirestore, collection, onSnapshot, addDoc, deleteDoc, doc, updateDoc, getDoc, setDoc } from "firebase/firestore";
 import "./App.css";
@@ -187,57 +187,48 @@ function AdminPanel({ settings, setSettings, onClose }) {
         <button className={tab === "products" ? "tab active" : "tab"} onClick={() => setTab("products")}>📦 محصولات</button>
         <button className={tab === "settings" ? "tab active" : "tab"} onClick={() => setTab("settings")}>⚙️ تنظیمات</button>
         <button className={tab === "payment" ? "tab active" : "tab"} onClick={() => setTab("payment")}>💳 پرداخت</button>
-        <button className={tab === "content" ? "tab active" : "tab"} onClick={() => setTab("content")}>📝 متون سایت</button>
         <button className={tab === "orders" ? "tab active" : "tab"} onClick={() => setTab("orders")}>📥 سفارش‌ها</button>
       </div>
 
       {tab === "products" && (
-        <div className="admin-card">
-          <h3>{editing ? "✏️ ویرایش محصول" : "➕ افزودن محصول جدید"}</h3>
-          <form onSubmit={saveProduct} className="order-form">
-            <label>نام محصول</label>
-            <input required value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="ماگ سفارشی" />
-            <div className="form-row">
-              <div><label>ایموجی آیکون</label><input value={form.icon} onChange={(e) => setForm({ ...form, icon: e.target.value })} placeholder="☕" /></div>
-              <div><label>قیمت (تومان)</label><input required type="number" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} placeholder="250000" /></div>
-            </div>
-            <label>توضیحات</label>
-            <textarea value={form.desc} onChange={(e) => setForm({ ...form, desc: e.target.value })} placeholder="توضیح کوتاه" />
-            <div className="form-row">
-              <div><label>برچسب (اختیاری)</label><input value={form.tag} onChange={(e) => setForm({ ...form, tag: e.target.value })} placeholder="پرفروش / جدید" /></div>
-              <div><label>لینک عکس (اختیاری)</label><input value={form.image} onChange={(e) => setForm({ ...form, image: e.target.value })} placeholder="https://..." /></div>
-            </div>
-            <div className="hero-buttons">
-              <button type="submit" className="primary-button">{editing ? "ذخیره تغییرات ✅" : "افزودن محصول ✅"}</button>
-              {editing && <button type="button" className="outline-button" onClick={() => { setEditing(null); setForm({ title: "", icon: "🖨️", price: "", desc: "", tag: "", image: "" }); }}>انصراف</button>}
-            </div>
-          </form>
-        </div>
-      )}
-
-      {tab === "products" && (
-        <div className="admin-card">
-          <h3>📦 محصولات موجود</h3>
-          {products.length === 0 ? (
-            <p className="empty-cart">هنوز محصولی ثبت نشده.</p>
-          ) : (
-            <div className="product-list-admin">
-              {products.map((p) => (
-                <div className="product-admin-item" key={p.id}>
-                  {p.image ? <img src={p.image} alt={p.title} className="pai-img" /> : <span className="pai-icon">{p.icon}</span>}
-                  <div className="pai-info">
-                    <strong>{p.title}</strong>
-                    <small>{formatPrice(p.price)}{p.tag ? ` | ${p.tag}` : ""}</small>
+        <>
+          <div className="admin-card">
+            <h3>{editing ? "✏️ ویرایش محصول" : "➕ افزودن محصول جدید"}</h3>
+            <form onSubmit={saveProduct} className="order-form">
+              <label>نام محصول</label>
+              <input required value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="ماگ سفارشی" />
+              <div className="form-row">
+                <div><label>ایموجی آیکون</label><input value={form.icon} onChange={(e) => setForm({ ...form, icon: e.target.value })} placeholder="☕" /></div>
+                <div><label>قیمت (تومان)</label><input required type="number" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} placeholder="250000" /></div>
+              </div>
+              <label>توضیحات</label>
+              <textarea value={form.desc} onChange={(e) => setForm({ ...form, desc: e.target.value })} placeholder="توضیح کوتاه" />
+              <div className="hero-buttons">
+                <button type="submit" className="primary-button">{editing ? "ذخیره تغییرات ✅" : "افزودن محصول ✅"}</button>
+                {editing && <button type="button" className="outline-button" onClick={() => { setEditing(null); setForm({ title: "", icon: "🖨️", price: "", desc: "", tag: "", image: "" }); }}>انصراف</button>}
+              </div>
+            </form>
+          </div>
+          <div className="admin-card">
+            <h3>📦 محصولات موجود ({products.length})</h3>
+            {products.length === 0 ? (
+              <p className="empty-cart">هنوز محصولی ثبت نشده.</p>
+            ) : (
+              <div className="product-list-admin">
+                {products.map((p) => (
+                  <div className="product-admin-item" key={p.id}>
+                    {p.image ? <img src={p.image} alt={p.title} className="pai-img" /> : <span className="pai-icon">{p.icon}</span>}
+                    <div className="pai-info"><strong>{p.title}</strong><small>{formatPrice(p.price)}{p.tag ? ` | ${p.tag}` : ""}</small></div>
+                    <div className="admin-actions">
+                      <button className="edit-btn" onClick={() => startEdit(p)}>✏️</button>
+                      <button className="del-btn" onClick={() => removeProduct(p.id)}>🗑️</button>
+                    </div>
                   </div>
-                  <div className="admin-actions">
-                    <button className="edit-btn" onClick={() => startEdit(p)}>✏️</button>
-                    <button className="del-btn" onClick={() => removeProduct(p.id)}>🗑️</button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </>
       )}
 
       {tab === "settings" && (
@@ -248,16 +239,11 @@ function AdminPanel({ settings, setSettings, onClose }) {
               <div><label>نام فروشگاه</label><input value={sform.shopName || ""} onChange={(e) => setSform({ ...sform, shopName: e.target.value })} /></div>
               <div><label>شعار</label><input value={sform.tagline || ""} onChange={(e) => setSform({ ...sform, tagline: e.target.value })} /></div>
             </div>
-            <label>شماره تماس</label>
-            <input value={sform.phone || ""} onChange={(e) => setSform({ ...sform, phone: e.target.value })} />
-            <label>شماره واتساپ (با 98)</label>
-            <input value={sform.whatsapp || ""} onChange={(e) => setSform({ ...sform, whatsapp: e.target.value })} />
-            <label>آیدی تلگرام (بدون @)</label>
-            <input value={sform.telegram || ""} onChange={(e) => setSform({ ...sform, telegram: e.target.value })} />
-            <label>آیدی روبیکا (بدون @)</label>
-            <input value={sform.rubika || ""} onChange={(e) => setSform({ ...sform, rubika: e.target.value })} />
-            <label>آدرس فروشگاه</label>
-            <input value={sform.address || ""} onChange={(e) => setSform({ ...sform, address: e.target.value })} />
+            <label>شماره تماس</label><input value={sform.phone || ""} onChange={(e) => setSform({ ...sform, phone: e.target.value })} />
+            <label>شماره واتساپ (با 98)</label><input value={sform.whatsapp || ""} onChange={(e) => setSform({ ...sform, whatsapp: e.target.value })} />
+            <label>آیدی تلگرام (بدون @)</label><input value={sform.telegram || ""} onChange={(e) => setSform({ ...sform, telegram: e.target.value })} />
+            <label>آیدی روبیکا (بدون @)</label><input value={sform.rubika || ""} onChange={(e) => setSform({ ...sform, rubika: e.target.value })} />
+            <label>آدرس فروشگاه</label><input value={sform.address || ""} onChange={(e) => setSform({ ...sform, address: e.target.value })} />
             <label style={{ display: "flex", alignItems: "center", gap: "10px", marginTop: "12px" }}>
               <input type="checkbox" checked={!!sform.showProductLogo} onChange={(e) => setSform({ ...sform, showProductLogo: e.target.checked })} style={{ width: "auto" }} />
               نمایش لوگو بالای بخش محصولات
@@ -271,11 +257,8 @@ function AdminPanel({ settings, setSettings, onClose }) {
         <div className="admin-card">
           <h3>💳 تنظیمات پرداخت</h3>
           <form onSubmit={saveSettings} className="order-form">
-            <h4 style={{ margin: "8px 0 6px", color: "var(--main)" }}>کارت‌به‌کارت</h4>
-            <label>شماره کارت</label>
-            <input value={sform.cardNumber || ""} onChange={(e) => setSform({ ...sform, cardNumber: e.target.value })} />
-            <label>نام صاحب حساب</label>
-            <input value={sform.cardHolder || ""} onChange={(e) => setSform({ ...sform, cardHolder: e.target.value })} />
+            <label>شماره کارت</label><input value={sform.cardNumber || ""} onChange={(e) => setSform({ ...sform, cardNumber: e.target.value })} />
+            <label>نام صاحب حساب</label><input value={sform.cardHolder || ""} onChange={(e) => setSform({ ...sform, cardHolder: e.target.value })} />
             <button type="submit" className="primary-button" style={{ marginTop: "16px" }}>ذخیره تنظیمات پرداخت ✅</button>
           </form>
         </div>
@@ -289,20 +272,13 @@ function AdminPanel({ settings, setSettings, onClose }) {
           ) : (
             orders.slice().reverse().map((o) => (
               <div className="order-item" key={o.id}>
-                <div className="order-head">
-                  <strong>👤 {o.name}</strong>
-                  <span>📱 {o.phone}</span>
-                  <button className="del-btn" onClick={() => removeOrder(o.id)}>🗑️</button>
-                </div>
+                <div className="order-head"><strong>👤 {o.name}</strong><span>📱 {o.phone}</span><button className="del-btn" onClick={() => removeOrder(o.id)}>🗑️</button></div>
                 {o.province && o.city && <div className="order-note">📍 {o.province}، {o.city}</div>}
                 {o.address && <div className="order-note">🏠 آدرس: {o.address}</div>}
                 {o.postal && <div className="order-note">📮 کدپستی: {o.postal}</div>}
                 {o.shipping && <div className="order-note">🚚 روش ارسال: {o.shipping}{o.shippingCost ? ` (${formatPrice(o.shippingCost)})` : ""}</div>}
                 <div className="order-cart">{o.items || "—"}</div>
-                <div className="order-total">
-                  <strong>جمع کل: {formatPrice(o.total)}</strong>
-                  <span className="order-date">{o.date || ""}</span>
-                </div>
+                <div className="order-total"><strong>جمع کل: {formatPrice(o.total)}</strong><span className="order-date">{o.date || ""}</span></div>
                 {o.payMethod && <div className="order-pay">💳 روش پرداخت: {o.payMethod}</div>}
                 {o.receiptName && <div className="order-note">🧾 رسید: {o.receiptName}</div>}
                 {o.note && <div className="order-note">📝 {o.note}</div>}
@@ -473,10 +449,7 @@ function App() {
           <a href="#contact">تماس با ما</a>
           <button className="nav-link admin-link" onClick={() => setRoute("admin")}>⚙️ مدیریت</button>
         </nav>
-        <button className="cart-button" onClick={() => setCartOpen(true)}>
-          🛒 سبد خرید
-          {cartCount > 0 && <span className="cart-count">{cartCount}</span>}
-        </button>
+        <button className="cart-button" onClick={() => setCartOpen(true)}>🛒 سبد خرید{cartCount > 0 && <span className="cart-count">{cartCount}</span>}</button>
       </header>
 
       <section className="hero" id="home">
@@ -493,12 +466,6 @@ function App() {
             <div><strong>+۱۲</strong><span>محصول متنوع</span></div>
             <div><strong>سریع</strong><span>آماده‌سازی سفارش</span></div>
           </div>
-        </div>
-        <div className="hero-image">
-          <img src={settings.logoUrl} alt="لوگو" className="logo-hero-img" onError={(e) => e.target.style.display = "none"} />
-          <div className="float-card fc1">☕ ماگ سفارشی</div>
-          <div className="float-card fc2">👕 تیشرت</div>
-          <div className="float-card fc3">🖼️ تخته شاسی</div>
         </div>
       </section>
 
@@ -553,10 +520,7 @@ function App() {
       {cartOpen && (
         <div className="overlay" onClick={() => setCartOpen(false)}>
           <div className="cart-drawer" onClick={(e) => e.stopPropagation()}>
-            <div className="cart-header">
-              <h3>🛒 سبد خرید</h3>
-              <button className="close-btn" onClick={() => setCartOpen(false)}>✕</button>
-            </div>
+            <div className="cart-header"><h3>🛒 سبد خرید</h3><button className="close-btn" onClick={() => setCartOpen(false)}>✕</button></div>
             {cart.length === 0 ? (
               <p className="empty-cart">سبد خرید شما خالی است.</p>
             ) : (
@@ -581,10 +545,7 @@ function App() {
       {orderOpen && (
         <div className="overlay center" onClick={() => setOrderOpen(false)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <div className="cart-header">
-              <h3>📎 تکمیل سفارش</h3>
-              <button className="close-btn" onClick={() => setOrderOpen(false)}>✕</button>
-            </div>
+            <div className="cart-header"><h3>📎 تکمیل سفارش</h3><button className="close-btn" onClick={() => setOrderOpen(false)}>✕</button></div>
             <form onSubmit={handleSubmit} className="order-form">
               <div className="design-note">{DESIGN_NOTE}</div>
               <label>نام و نام خانوادگی</label>
@@ -623,12 +584,6 @@ function App() {
                   <input type="radio" name="pay" checked={payMethod === "card"} onChange={() => setPayMethod("card")} style={{ width: "auto" }} />
                   💳 کارت‌به‌کارت
                 </label>
-                {settings.gatewayEnabled ? (
-                  <label className={"pay-option" + (payMethod === "online" ? " active" : "")}>
-                    <input type="radio" name="pay" checked={payMethod === "online"} onChange={() => setPayMethod("online")} style={{ width: "auto" }} />
-                    🌐 پرداخت آنلاین (درگاه)
-                  </label>
-                ) : null}
               </div>
               {payMethod === "card" ? (
                 <div className="card-box">
@@ -657,6 +612,10 @@ function App() {
               <button type="submit" className="primary-button full">ارسال سفارش ✅</button>
               <div className="alt-contact">
                 📢 در صورت عدم دسترسی به واتساپ، از طریق <strong>روبیکا</strong> یا <strong>تلگرام</strong> به آیدی <strong>@nashrsky</strong> یا شماره <strong>۰۹۲۱۶۱۳۹۵۳۱</strong> پیام دهید.
+                <div className="alt-buttons">
+                  <a className="alt-btn tg" href={`https://t.me/${settings.telegram}`} target="_blank" rel="noreferrer">✈️ ارسال از تلگرام</a>
+                  <a className="alt-btn rb" href={`https://rubika.ir/${settings.rubika}`} target="_blank" rel="noreferrer">🔵 ارسال از روبیکا</a>
+                </div>
               </div>
               <small className="form-note">⚠️ با ارسال، پنجره‌ی واتساپ باز می‌شود. فایل طرح و عکس رسید را در همان‌جا ارسال کنید.</small>
             </form>
@@ -667,10 +626,7 @@ function App() {
       {success && (
         <div className="overlay center" onClick={() => setSuccess(null)}>
           <div className="modal success-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="cart-header">
-              <h3>✅ سفارش شما ثبت شد!</h3>
-              <button className="close-btn" onClick={() => setSuccess(null)}>✕</button>
-            </div>
+            <div className="cart-header"><h3>✅ سفارش شما ثبت شد!</h3><button className="close-btn" onClick={() => setSuccess(null)}>✕</button></div>
             <div className="success-body">
               <p>👤 {success.name}</p>
               <p className="success-items">{success.items}</p>
@@ -679,7 +635,15 @@ function App() {
               <p style={{ fontSize: "13px", color: "#777", marginTop: "10px" }}>💳 {success.payText}</p>
               <p style={{ fontSize: "13px", color: "var(--main)", marginTop: "10px" }}>{DESIGN_NOTE}</p>
             </div>
-            <button className="primary-button full" onClick={() => setSuccess(null)}>باشه</button>
+            <div className="alt-contact" style={{ marginTop: "12px" }}>
+              در صورت عدم دسترسی به واتساپ:
+              <div className="alt-buttons">
+                <a className="alt-btn tg" href={`https://t.me/${settings.telegram}`} target="_blank" rel="noreferrer">✈️ ارسال از تلگرام</a>
+                <a className="alt-btn rb" href={`https://rubika.ir/${settings.rubika}`} target="_blank" rel="noreferrer">🔵 ارسال از روبیکا</a>
+              </div>
+              <p style={{ fontSize: "13px", color: "#777", marginTop: "8px", textAlign: "center" }}>آیدی @nashrsky | 📱 ۰۹۲۱۶۱۳۹۵۳۱</p>
+            </div>
+            <button className="primary-button full" onClick={() => setSuccess(null)} style={{ marginTop: "12px" }}>باشه</button>
           </div>
         </div>
       )}
