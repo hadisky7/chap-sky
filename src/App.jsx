@@ -17,8 +17,6 @@ const ADMIN_PASSWORD = "@Hadi6977";
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-const DESIGN_NOTE = "🧑‍🎨 طرح شما طراحی می‌شود و پیش از چاپ، برای تأیید برایتان ارسال می‌گردد. پس از تأیید شما، چاپ انجام می‌شود.";
-
 const PROVINCES = [
   "آذربایجان شرقی","آذربایجان غربی","اردبیل","اصفهان","البرز","ایلام","بوشهر","تهران",
   "چهارمحال و بختیاری","خراسان جنوبی","خراسان رضوی","خراسان شمالی","خوزستان","زنجان",
@@ -46,10 +44,11 @@ const DEFAULT_SETTINGS = {
   trust2: "💳 تسویه پس از تأیید طرح",
   trust3: "🎨 مشاوره رایگان طراحی",
   trust4: "🔁 ضمانت کیفیت چاپ",
+  designNote: "🧑‍🎨 طرح شما طراحی می‌شود و پیش از چاپ، برای تأیید برایتان ارسال می‌گردد. پس از تأیید شما، چاپ انجام می‌شود.",
   mainColor: "#4f6df5",
   secondColor: "#7c3aed",
   darkColor: "#1e2235",
-  font: "Vazirmatn",
+  heroImage: "",
   logoUrl: "logo.png",
   showProductLogo: true,
   cardNumber: "6219861927791078",
@@ -79,7 +78,7 @@ const defaultFeatures = [
 
 const defaultSteps = [
   { num: "۱", title: "انتخاب محصول", desc: "محصول و تعداد دلخواه را انتخاب کنید." },
-  { num: "۲", title: "آپلود طرح", desc: "فایل عکس یا طرح خود را همراه سفارش ارسال کنید." },
+  { num: "۲", title: "تکمیل سفارش", desc: "مشخصات و جزئیات سفارش را وارد کنید." },
   { num: "۳", title: "تأیید طرح و چاپ", desc: "طرح برایتان ارسال می‌شود، تأیید کنید و چاپ انجام می‌شود." },
 ];
 
@@ -92,7 +91,20 @@ function applyStyle(s) {
   r.style.setProperty("--main", s.mainColor);
   r.style.setProperty("--second", s.secondColor);
   r.style.setProperty("--dark", s.darkColor);
-  r.style.setProperty("--font", `"${s.font}", Tahoma, sans-serif`);
+  r.style.setProperty("--font", `"${s.font || 'Vazirmatn'}", Tahoma, sans-serif`);
+}
+
+function SectionField({ label, value, onChange, rows, type, placeholder }) {
+  return (
+    <>
+      <label>{label}</label>
+      {rows ? (
+        <textarea rows={rows} value={value || ""} onChange={(e) => onChange(e.target.value)} placeholder={placeholder || ""} />
+      ) : (
+        <input type={type || "text"} value={value || ""} onChange={(e) => onChange(e.target.value)} placeholder={placeholder || ""} />
+      )}
+    </>
+  );
 }
 
 /* ---------- پنل مدیریت ---------- */
@@ -101,7 +113,7 @@ function AdminPanel({ settings, setSettings, onClose }) {
   const [products, setProducts] = useState([]);
   const [orders, setOrders] = useState([]);
   const [editing, setEditing] = useState(null);
-  const [form, setForm] = useState({ title: "", icon: "🖨️", price: "", desc: "", tag: "", image: "" });
+  const [form, setForm] = useState({ title: "", icon: "", price: "", desc: "", tag: "", image: "" });
   const [sform, setSform] = useState(settings || {});
   const [features, setFeatures] = useState(defaultFeatures);
   const [steps, setSteps] = useState(defaultSteps);
@@ -132,7 +144,7 @@ function AdminPanel({ settings, setSettings, onClose }) {
       if (editing) await updateDoc(doc(db, "products", editing), data);
       else await addDoc(collection(db, "products"), data);
     } catch (err) { alert("خطا در ذخیره: " + err.message); }
-    setForm({ title: "", icon: "🖨️", price: "", desc: "", tag: "", image: "" });
+    setForm({ title: "", icon: "", price: "", desc: "", tag: "", image: "" });
     setEditing(null);
   };
 
@@ -142,14 +154,14 @@ function AdminPanel({ settings, setSettings, onClose }) {
 
   const startEdit = (p) => {
     setEditing(p.id);
-    setForm({ title: p.title, icon: p.icon, price: p.price, desc: p.desc, tag: p.tag || "", image: p.image || "" });
+    setForm({ title: p.title, icon: p.icon || "", price: p.price, desc: p.desc, tag: p.tag || "", image: p.image || "" });
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const saveSettings = async (e) => {
-    e.preventDefault();
+  const saveAll = async (e, prefix) => {
+    e && e.preventDefault();
     try {
-      await setDoc(doc(db, "content", "settings"), sform);
+      await setDoc(doc(db, "content", prefix), sform);
       setSettings(sform);
       applyStyle(sform);
       alert("تنظیمات ذخیره شد ✅");
@@ -160,6 +172,7 @@ function AdminPanel({ settings, setSettings, onClose }) {
     e.preventDefault();
     try {
       await setDoc(doc(db, "content", "features"), { list: features });
+      setFeatures(features);
       alert("مزایا ذخیره شد ✅");
     } catch (err) { alert("خطا: " + err.message); }
   };
@@ -168,6 +181,7 @@ function AdminPanel({ settings, setSettings, onClose }) {
     e.preventDefault();
     try {
       await setDoc(doc(db, "content", "steps"), { list: steps });
+      setSteps(steps);
       alert("مراحل سفارش ذخیره شد ✅");
     } catch (err) { alert("خطا: " + err.message); }
   };
@@ -175,6 +189,8 @@ function AdminPanel({ settings, setSettings, onClose }) {
   const removeOrder = async (id) => {
     if (confirm("این سفارش حذف شود؟")) await deleteDoc(doc(db, "orders", id));
   };
+
+  const setS = (key, val) => setSform((prev) => ({ ...prev, [key]: val }));
 
   return (
     <div className="admin-wrap">
@@ -185,11 +201,14 @@ function AdminPanel({ settings, setSettings, onClose }) {
 
       <div className="tabs">
         <button className={tab === "products" ? "tab active" : "tab"} onClick={() => setTab("products")}>📦 محصولات</button>
-        <button className={tab === "settings" ? "tab active" : "tab"} onClick={() => setTab("settings")}>⚙️ تنظیمات</button>
+        <button className={tab === "info" ? "tab active" : "tab"} onClick={() => setTab("info")}>⚙️ اطلاعات فروشگاه</button>
+        <button className={tab === "appearance" ? "tab active" : "tab"} onClick={() => setTab("appearance")}>🎨 ظاهر سایت</button>
+        <button className={tab === "texts" ? "tab active" : "tab"} onClick={() => setTab("texts")}>📝 متون سایت</button>
         <button className={tab === "payment" ? "tab active" : "tab"} onClick={() => setTab("payment")}>💳 پرداخت</button>
         <button className={tab === "orders" ? "tab active" : "tab"} onClick={() => setTab("orders")}>📥 سفارش‌ها</button>
       </div>
 
+      {/* محصولات */}
       {tab === "products" && (
         <>
           <div className="admin-card">
@@ -201,11 +220,15 @@ function AdminPanel({ settings, setSettings, onClose }) {
                 <div><label>ایموجی آیکون</label><input value={form.icon} onChange={(e) => setForm({ ...form, icon: e.target.value })} placeholder="☕" /></div>
                 <div><label>قیمت (تومان)</label><input required type="number" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} placeholder="250000" /></div>
               </div>
+              <label>لینک عکس محصول (اختیاری)</label>
+              <input value={form.image} onChange={(e) => setForm({ ...form, image: e.target.value })} placeholder="https://..." />
               <label>توضیحات</label>
               <textarea value={form.desc} onChange={(e) => setForm({ ...form, desc: e.target.value })} placeholder="توضیح کوتاه" />
+              <label>برچسب (اختیاری)</label>
+              <input value={form.tag} onChange={(e) => setForm({ ...form, tag: e.target.value })} placeholder="پرفروش / جدید" />
               <div className="hero-buttons">
                 <button type="submit" className="primary-button">{editing ? "ذخیره تغییرات ✅" : "افزودن محصول ✅"}</button>
-                {editing && <button type="button" className="outline-button" onClick={() => { setEditing(null); setForm({ title: "", icon: "🖨️", price: "", desc: "", tag: "", image: "" }); }}>انصراف</button>}
+                {editing && <button type="button" className="outline-button" onClick={() => { setEditing(null); setForm({ title: "", icon: "", price: "", desc: "", tag: "", image: "" }); }}>انصراف</button>}
               </div>
             </form>
           </div>
@@ -217,7 +240,7 @@ function AdminPanel({ settings, setSettings, onClose }) {
               <div className="product-list-admin">
                 {products.map((p) => (
                   <div className="product-admin-item" key={p.id}>
-                    {p.image ? <img src={p.image} alt={p.title} className="pai-img" /> : <span className="pai-icon">{p.icon}</span>}
+                    {p.image ? <img src={p.image} alt={p.title} className="pai-img" onError={(e) => { e.target.style.display = "none"; }} /> : <span className="pai-icon">{p.icon || "🖨️"}</span>}
                     <div className="pai-info"><strong>{p.title}</strong><small>{formatPrice(p.price)}{p.tag ? ` | ${p.tag}` : ""}</small></div>
                     <div className="admin-actions">
                       <button className="edit-btn" onClick={() => startEdit(p)}>✏️</button>
@@ -231,39 +254,146 @@ function AdminPanel({ settings, setSettings, onClose }) {
         </>
       )}
 
-      {tab === "settings" && (
+      {/* اطلاعات فروشگاه */}
+      {tab === "info" && (
         <div className="admin-card">
-          <h3>⚙️ تنظیمات فروشگاه</h3>
-          <form onSubmit={saveSettings} className="order-form">
+          <h3>⚙️ اطلاعات فروشگاه</h3>
+          <form onSubmit={(e) => saveAll(e, "info")} className="order-form">
             <div className="form-row">
-              <div><label>نام فروشگاه</label><input value={sform.shopName || ""} onChange={(e) => setSform({ ...sform, shopName: e.target.value })} /></div>
-              <div><label>شعار</label><input value={sform.tagline || ""} onChange={(e) => setSform({ ...sform, tagline: e.target.value })} /></div>
+              <div><SectionField label="نام فروشگاه" value={sform.shopName} onChange={(v) => setS("shopName", v)} /></div>
+              <div><SectionField label="شعار" value={sform.tagline} onChange={(v) => setS("tagline", v)} /></div>
             </div>
-            <label>شماره تماس</label><input value={sform.phone || ""} onChange={(e) => setSform({ ...sform, phone: e.target.value })} />
-            <label>شماره واتساپ (با 98)</label><input value={sform.whatsapp || ""} onChange={(e) => setSform({ ...sform, whatsapp: e.target.value })} />
-            <label>آیدی تلگرام (بدون @)</label><input value={sform.telegram || ""} onChange={(e) => setSform({ ...sform, telegram: e.target.value })} />
-            <label>آیدیروبیکا (بدون @)</label><input value={sform.rubika || ""} onChange={(e) => setSform({ ...sform, rubika: e.target.value })} />
-            <label>آدرس فروشگاه</label><input value={sform.address || ""} onChange={(e) => setSform({ ...sform, address: e.target.value })} />
-            <label style={{ display: "flex", alignItems: "center", gap: "10px", marginTop: "12px" }}>
-              <input type="checkbox" checked={!!sform.showProductLogo} onChange={(e) => setSform({ ...sform, showProductLogo: e.target.checked })} style={{ width: "auto" }} />
-              نمایش لوگو بالای بخش محصولات
-            </label>
-            <button type="submit" className="primary-button" style={{ marginTop: "16px" }}>ذخیره تنظیمات ✅</button>
+            <SectionField label="شماره تماس" value={sform.phone} onChange={(v) => setS("phone", v)} />
+            <SectionField label="شماره واتساپ (با 98)" value={sform.whatsapp} onChange={(v) => setS("whatsapp", v)} />
+            <SectionField label="آیدی تلگرام (بدون @)" value={sform.telegram} onChange={(v) => setS("telegram", v)} />
+            <SectionField label="آیدی روبیکا (بدون @)" value={sform.rubika} onChange={(v) => setS("rubika", v)} />
+            <SectionField label="آیدی اینستاگرام (بدون @)" value={sform.instagram} onChange={(v) => setS("instagram", v)} />
+            <SectionField label="آیدی بله (بدون @)" value={sform.bale} onChange={(v) => setS("bale", v)} />
+            <SectionField label="آدرس فروشگاه" value={sform.address} onChange={(v) => setS("address", v)} />
+            <button type="submit" className="primary-button" style={{ marginTop: "16px" }}>ذخیره اطلاعات ✅</button>
           </form>
         </div>
       )}
 
+      {/* ظاهر سایت */}
+      {tab === "appearance" && (
+        <div className="admin-card">
+          <h3>🎨 ظاهر سایت</h3>
+          <form onSubmit={(e) => saveAll(e, "appearance")} className="order-form">
+            <h4 style={{ margin: "10px 0 6px", color: "var(--main)" }}>🔤 فونت سایت</h4>
+            <label>انتخاب فونت</label>
+            <select value={sform.font || "Vazirmatn"} onChange={(e) => setS("font", e.target.value)}>
+              {FONTS.map((f) => <option key={f.value} value={f.value}>{f.label}</option>)}
+            </select>
+            <h4 style={{ margin: "16px 0 6px", color: "var(--main)" }}>🎨 رنگ سایت</h4>
+            <div className="form-row">
+              <div><label>رنگ اصلی</label><input type="color" value={sform.mainColor || "#4f6df5"} onChange={(e) => setS("mainColor", e.target.value)} style={{ height: "44px", padding: "4px" }} /></div>
+              <div><label>رنگ دوم</label><input type="color" value={sform.secondColor || "#7c3aed"} onChange={(e) => setS("secondColor", e.target.value)} style={{ height: "44px", padding: "4px" }} /></div>
+              <div><label>رنگ تیره</label><input type="color" value={sform.darkColor || "#1e2235"} onChange={(e) => setS("darkColor", e.target.value)} style={{ height: "44px", padding: "4px" }} /></div>
+            </div>
+            <h4 style={{ margin: "16px 0 6px", color: "var(--main)" }}>🖼️ لوگو و تصاویر</h4>
+            <SectionField label="لینک لوگو" value={sform.logoUrl} onChange={(v) => setS("logoUrl", v)} placeholder="logo.png یا https://..." />
+            <SectionField label="لینک تصویر بخش هیرو (اختیاری)" value={sform.heroImage} onChange={(v) => setS("heroImage", v)} placeholder="https://..." />
+            <label style={{ display: "flex", alignItems: "center", gap: "10px", marginTop: "12px" }}>
+              <input type="checkbox" checked={!!sform.showProductLogo} onChange={(e) => setS("showProductLogo", e.target.checked)} style={{ width: "auto" }} />
+              نمایش لوگو بالای بخش محصولات
+            </label>
+            <button type="submit" className="primary-button" style={{ marginTop: "16px" }}>ذخیره ظاهر سایت ✅</button>
+          </form>
+        </div>
+      )}
+
+      {/* متون سایت */}
+      {tab === "texts" && (
+        <>
+          <div className="admin-card">
+            <h3>🏠 بخش هیرو (بالای صفحه)</h3>
+            <form onSubmit={(e) => saveAll(e, "texts")} className="order-form">
+              <SectionField label="متن نشان (Badge)" value={sform.badgeText} onChange={(v) => setS("badgeText", v)} />
+              <div className="form-row">
+                <div><SectionField label="تیتر بخش اول" value={sform.heroTitle1} onChange={(v) => setS("heroTitle1", v)} /></div>
+                <div><SectionField label="تیتر بخش دوم (رنگی)" value={sform.heroTitle2} onChange={(v) => setS("heroTitle2", v)} /></div>
+              </div>
+              <SectionField label="متن توضیحات هیرو" value={sform.heroText} onChange={(v) => setS("heroText", v)} rows={3} />
+              <button type="submit" className="primary-button">ذخیره هیرو ✅</button>
+            </form>
+          </div>
+
+          <div className="admin-card">
+            <h3>🚚 نوار اعتماد</h3>
+            <form onSubmit={(e) => saveAll(e, "texts")} className="order-form">
+              <SectionField label="متن ۱" value={sform.trust1} onChange={(v) => setS("trust1", v)} />
+              <SectionField label="متن ۲" value={sform.trust2} onChange={(v) => setS("trust2", v)} />
+              <SectionField label="متن ۳" value={sform.trust3} onChange={(v) => setS("trust3", v)} />
+              <SectionField label="متن ۴" value={sform.trust4} onChange={(v) => setS("trust4", v)} />
+              <button type="submit" className="primary-button">ذخیره نوار اعتماد ✅</button>
+            </form>
+          </div>
+
+          <div className="admin-card">
+            <h3>📝 متن طراحی / چاپ</h3>
+            <form onSubmit={(e) => saveAll(e, "texts")} className="order-form">
+              <SectionField label="متن توضیح طراحی" value={sform.designNote} onChange={(v) => setS("designNote", v)} rows={2} />
+              <button type="submit" className="primary-button">ذخیره متن ✅</button>
+            </form>
+          </div>
+
+          <div className="admin-card">
+            <h3>📝 مزایا (چرا ما؟)</h3>
+            <form onSubmit={saveFeatures} className="order-form">
+              {features.map((f, i) => (
+                <div key={i}>
+                  <h5 style={{ margin: "12px 0 6px", color: "var(--main)" }}>مزیت {i + 1}</h5>
+                  <div className="form-row">
+                    <div><label>آیکون</label><input value={f.icon} onChange={(e) => { const n = [...features]; n[i].icon = e.target.value; setFeatures(n); }} /></div>
+                    <div><label>عنوان</label><input value={f.title} onChange={(e) => { const n = [...features]; n[i].title = e.target.value; setFeatures(n); }} /></div>
+                  </div>
+                  <label>توضیحات</label>
+                  <input value={f.desc} onChange={(e) => { const n = [...features]; n[i].desc = e.target.value; setFeatures(n); }} />
+                </div>
+              ))}
+              <button type="submit" className="primary-button">ذخیره مزایا ✅</button>
+            </form>
+          </div>
+
+          <div className="admin-card">
+            <h3>🪜 مراحل سفارش</h3>
+            <form onSubmit={saveSteps} className="order-form">
+              {steps.map((f, i) => (
+                <div key={i}>
+                  <h5 style={{ margin: "12px 0 6px", color: "var(--main)" }}>قدم {i + 1}</h5>
+                  <div className="form-row">
+                    <div><label>شماره</label><input value={f.num} onChange={(e) => { const n = [...steps]; n[i].num = e.target.value; setSteps(n); }} /></div>
+                    <div><label>عنوان</label><input value={f.title} onChange={(e) => { const n = [...steps]; n[i].title = e.target.value; setSteps(n); }} /></div>
+                  </div>
+                  <label>توضیحات</label>
+                  <input value={f.desc} onChange={(e) => { const n = [...steps]; n[i].desc = e.target.value; setSteps(n); }} />
+                </div>
+              ))}
+              <button type="submit" className="primary-button">ذخیره مراحل ✅</button>
+            </form>
+          </div>
+        </>
+      )}
+
+      {/* پرداخت */}
       {tab === "payment" && (
         <div className="admin-card">
           <h3>💳 تنظیمات پرداخت</h3>
-          <form onSubmit={saveSettings} className="order-form">
-            <label>شماره کارت</label><input value={sform.cardNumber || ""} onChange={(e) => setSform({ ...sform, cardNumber: e.target.value })} />
-            <label>نام صاحب حساب</label><input value={sform.cardHolder || ""} onChange={(e) => setSform({ ...sform, cardHolder: e.target.value })} />
+          <form onSubmit={(e) => saveAll(e, "payment")} className="order-form">
+            <SectionField label="شماره کارت" value={sform.cardNumber} onChange={(v) => setS("cardNumber", v)} />
+            <SectionField label="نام صاحب حساب" value={sform.cardHolder} onChange={(v) => setS("cardHolder", v)} />
+            <label style={{ display: "flex", alignItems: "center", gap: "10px", marginTop: "12px" }}>
+              <input type="checkbox" checked={!!sform.gatewayEnabled} onChange={(e) => setS("gatewayEnabled", e.target.checked)} style={{ width: "auto" }} />
+              فعال‌سازی درگاه پرداخت آنلاین
+            </label>
+            {sform.gatewayEnabled && <SectionField label="کلید مرچنت" value={sform.gatewayMerchantId} onChange={(v) => setS("gatewayMerchantId", v)} />}
             <button type="submit" className="primary-button" style={{ marginTop: "16px" }}>ذخیره تنظیمات پرداخت ✅</button>
           </form>
         </div>
       )}
 
+      {/* سفارش‌ها */}
       {tab === "orders" && (
         <div className="admin-card">
           <h3>📥 سفارش‌های مشتریان ({orders.length})</h3>
@@ -280,9 +410,7 @@ function AdminPanel({ settings, setSettings, onClose }) {
                 <div className="order-cart">{o.items || "—"}</div>
                 <div className="order-total"><strong>جمع کل: {formatPrice(o.total)}</strong><span className="order-date">{o.date || ""}</span></div>
                 {o.payMethod && <div className="order-pay">💳 روش پرداخت: {o.payMethod}</div>}
-                {o.receiptName && <div className="order-note">🧾 رسید: {o.receiptName}</div>}
                 {o.note && <div className="order-note">📝 {o.note}</div>}
-                {o.file && <div className="order-note">📎 فایل طرح: {o.file}</div>}
               </div>
             ))
           )}
@@ -305,8 +433,6 @@ function App() {
   const [cart, setCart] = useState([]);
   const [cartOpen, setCartOpen] = useState(false);
   const [orderOpen, setOrderOpen] = useState(false);
-  const [fileName, setFileName] = useState("");
-  const [receiptName, setReceiptName] = useState("");
   const [payMethod, setPayMethod] = useState("card");
   const [shipping, setShipping] = useState("");
   const [success, setSuccess] = useState(null);
@@ -357,7 +483,7 @@ function App() {
       alert("لطفاً روش ارسال را انتخاب کنید!");
       return;
     }
-    const items = cart.map((i) => `${i.icon} ${i.title} × ${i.qty} = ${formatPrice(i.price * i.qty)}`).join("\n");
+    const items = cart.map((i) => `${i.icon || "🖨️"} ${i.title} × ${i.qty} = ${formatPrice(i.price * i.qty)}`).join("\n");
     const payText = payMethod === "card"
       ? `کارت‌به‌کارت به شماره ${settings.cardNumber} (${settings.cardHolder})`
       : "پرداخت آنلاین از طریق درگاه";
@@ -367,14 +493,11 @@ function App() {
       `📍 استان: ${form.province}\n🏙️ شهر: ${form.city}\n` +
       `🏠 آدرس: ${form.address}\n📮 کدپستی: ${form.postal}\n` +
       `🚚 روش ارسال: ${shipping}${shippingCost ? ` (${formatPrice(shippingCost)})` : " (رایگان)"}\n` +
-      (form.desc ? `📝 توضیحات: ${form.desc}\n` : "") +
+      (form.desc ? `📝 جزئیات سفارش: ${form.desc}\n` : "") +
       `\n📦 اقلام:\n${items}\n` +
       (shippingCost ? `\n🚚 هزینه ارسال: ${formatPrice(shippingCost)}\n` : "") +
       `\n💰 جمع کل: ${formatPrice(total)}\n` +
-      `💳 روش پرداخت: ${payText}\n` +
-      (receiptName ? `🧾 رسید ارسال‌شده: ${receiptName}\n` : "") +
-      (fileName ? `📎 فایل طرح: ${fileName}\n` : "") +
-      `\n${DESIGN_NOTE}\n\n⚡ پاسخ در کوتاه‌ترین زمان`;
+      `💳 روش پرداخت: ${payText}\n\n${settings.designNote}\n\n⚡ پاسخ در کوتاه‌ترین زمان`;
 
     window.open(`https://wa.me/${settings.whatsapp}?text=${encodeURIComponent(body)}`, "_blank");
 
@@ -382,12 +505,12 @@ function App() {
       await addDoc(collection(db, "orders"), {
         name: form.name, phone: form.phone, province: form.province, city: form.city,
         address: form.address, postal: form.postal, shipping, shippingCost,
-        note: form.desc, file: fileName, receiptName, payMethod: payText,
+        note: form.desc, payMethod: payText,
         items, total, date: new Date().toLocaleString("fa-IR"),
       });
     } catch (err) { console.error("order save:", err); }
     setSuccess({ name: form.name, total, shipping, shippingCost, items, payText });
-    setOrderOpen(false); setCart([]); setFileName(""); setReceiptName(""); setShipping("");
+    setOrderOpen(false); setCart([]); setShipping("");
     setForm({ name: "", phone: "", desc: "", address: "", postal: "", province: "", city: "" });
   };
 
@@ -422,7 +545,7 @@ function App() {
     return (
       <div className="product-card">
         {p.tag && <span className="product-tag">{p.tag}</span>}
-        {p.image ? <img src={p.image} alt={p.title} className="product-img" onError={(e) => { e.target.style.display = "none"; }} /> : <div className="product-icon">{p.icon}</div>}
+        {p.image ? <img src={p.image} alt={p.title} className="product-img" onError={(e) => { e.target.style.display = "none"; }} /> : <div className="product-icon">{p.icon || "🖨️"}</div>}
         <h3>{p.title}</h3>
         <p>{p.desc}</p>
         <div className="product-price">{formatPrice(p.price)}</div>
@@ -467,6 +590,11 @@ function App() {
             <div><strong>سریع</strong><span>آماده‌سازی سفارش</span></div>
           </div>
         </div>
+        {settings.heroImage && (
+          <div className="hero-image">
+            <img src={settings.heroImage} alt="تبلیغ" className="logo-hero-img" onError={(e) => e.target.style.display = "none"} />
+          </div>
+        )}
       </section>
 
       <div className="trust-bar">
@@ -527,7 +655,7 @@ function App() {
               <>
                 {cart.map((i) => (
                   <div className="cart-item" key={i.id}>
-                    <span className="ci-title">{i.icon} {i.title}</span>
+                    <span className="ci-title">{i.icon || "🖨️"} {i.title}</span>
                     <div className="qty-box">
                       <button onClick={() => changeQty(i.id, 1)}>＋</button><span>{i.qty}</span><button onClick={() => changeQty(i.id, -1)}>－</button>
                     </div>
@@ -547,7 +675,7 @@ function App() {
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <div className="cart-header"><h3>📎 تکمیل سفارش</h3><button className="close-btn" onClick={() => setOrderOpen(false)}>✕</button></div>
             <form onSubmit={handleSubmit} className="order-form">
-              <div className="design-note">{DESIGN_NOTE}</div>
+              <div className="design-note">{settings.designNote}</div>
               <label>نام و نام خانوادگی</label>
               <input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="مثلاً: علی محمدی" />
               <label>شماره تماس</label>
@@ -597,29 +725,17 @@ function App() {
               ) : (
                 <div className="card-box"><p>🔗 به درگاه پرداخت آنلاین منتقل می‌شوید.</p></div>
               )}
-              <label>🧾 آپلود تصویر رسید پرداخت (عکس)</label>
-              <div className="file-upload">
-                <input type="file" id="receipt-file" accept="image/*" onChange={(e) => setReceiptName(e.target.files ? e.target.files[0].name : "")} />
-                <label htmlFor="receipt-file" className="file-label">{receiptName ? `🧾 ${receiptName}` : "⬆️ انتخاب عکس رسید"}</label>
-              </div>
-              <label>توضیحات سفارش (تعداد، سایز، متن چاپ و...)</label>
-              <textarea rows="2" value={form.desc} onChange={(e) => setForm({ ...form, desc: e.target.value })} placeholder="مثلاً: ۲۰ عدد ماگ با لوگوی شرکت" />
-              <label>فایل طرح شما (عکس، PDF، PSD...)</label>
-              <div className="file-upload">
-                <input type="file" id="design-file" accept="image/*,.pdf,.psd,.ai,.zip" onChange={(e) => setFileName(e.target.files ? e.target.files[0].name : "")} />
-                <label htmlFor="design-file" className="file-label">{fileName ? `📄 ${fileName}` : "⬆️ انتخاب فایل طرح"}</label>
-              </div>
+              <label>📝 جزئیات کامل سفارش (سایز، تعداد، متن چاپ، رنگ و...) *</label>
+              <textarea rows="3" required value={form.desc} onChange={(e) => setForm({ ...form, desc: e.target.value })} placeholder="لطفاً تمام جزئیات سفارش شامل تعداد، سایز، متن موردنظر برای چاپ، رنگ و هر نکته‌ی دیگر را بنویسید" />
               <button type="submit" className="primary-button full">ارسال سفارش ✅</button>
               <div className="alt-contact">
-                📢 در صورت عدم دسترسی به واتساپ، از طریق <strong>تلگرام</strong> به آیدی <strong>@nashrsky</strong> پیام دهید.
+                📢 در صورت عدم دسترسی به واتساپ، از طریق <strong>تلگرام</strong> به آیدی <strong>@{settings.telegram}</strong> پیام دهید.
                 <div className="alt-buttons">
                   <a className="alt-btn tg" href={`https://t.me/${settings.telegram}`} target="_blank" rel="noreferrer">✈️ ارسال از تلگرام</a>
                 </div>
-                <p className="rubika-note">
-                  🔵 اگر تلگرام هم ندارید، می‌توانید از طریق <strong>روبیکا</strong> به شماره <strong>۰۹۲۱۶۱۳۹۵۳۱</strong> یا آیدی <strong>@nashrsky</strong> پیام دهید.
-                </p>
+                <p className="rubika-note">🔵 اگر تلگرام هم ندارید، از <strong>روبیکا</strong> به شماره <strong>{settings.phone}</strong> یا آیدی <strong>@{settings.rubika}</strong> پیام دهید.</p>
               </div>
-              <small className="form-note">⚠️ با ارسال، پنجره‌ی واتساپ باز می‌شود. فایل طرح و عکس رسید را در همان‌جا ارسال کنید.</small>
+              <small className="form-note">⚠️ با ارسال، پنجره‌ی واتساپ باز می‌شود. سفارش شما در سامانه نیز ثبت می‌شود.</small>
             </form>
           </div>
         </div>
@@ -635,18 +751,9 @@ function App() {
               <p>🚚 روش ارسال: {success.shipping}{success.shippingCost ? ` (${formatPrice(success.shippingCost)})` : " (رایگان)"}</p>
               <p className="success-total">💰 مبلغ: <strong>{formatPrice(success.total)}</strong></p>
               <p style={{ fontSize: "13px", color: "#777", marginTop: "10px" }}>💳 {success.payText}</p>
-              <p style={{ fontSize: "13px", color: "var(--main)", marginTop: "10px" }}>{DESIGN_NOTE}</p>
+              <p style={{ fontSize: "13px", color: "var(--main)", marginTop: "10px" }}>{settings.designNote}</p>
             </div>
-            <div className="alt-contact" style={{ marginTop: "12px" }}>
-              در صورت عدم دسترسی به واتساپ:
-              <div className="alt-buttons">
-                <a className="alt-btn tg" href={`https://t.me/${settings.telegram}`} target="_blank" rel="noreferrer">✈️ ارسال از تلگرام</a>
-              </div>
-              <p className="rubika-note">
-                🔵 اگر تلگرام هم ندارید، از <strong>روبیکا</strong> به شماره <strong>۰۹۲۱۶۱۳۹۵۳۱</strong> یا آیدی <strong>@nashrsky</strong> پیام دهید.
-              </p>
-            </div>
-            <button className="primary-button full" onClick={() => setSuccess(null)} style={{ marginTop: "12px" }}>باشه</button>
+            <button className="primary-button full" onClick={() => setSuccess(null)}>باشه</button>
           </div>
         </div>
       )}
