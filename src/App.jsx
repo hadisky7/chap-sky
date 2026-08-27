@@ -12,13 +12,22 @@ const firebaseConfig = {
   appId: "1:1030447349157:web:37b8ed52a78c4e59bffc4c"
 };
 
-const ADMIN_PASSWORD = "1234";
+const ADMIN_PASSWORD = "@Hadi6977";
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
+const PROVINCES = [
+  "آذربایجان شرقی","آذربایجان غربی","اردبیل","اصفهان","البرز","ایلام","بوشهر","تهران",
+  "چهارمحال و بختیاری","خراسان جنوبی","خراسان رضوی","خراسان شمالی","خوزستان","زنجان",
+  "سمنان","سیستان و بلوچستان","فارس","قزوین","قم","کردستان","کرمان","کرمانشاه",
+  "کهگیلویه و بویراحمد","گلستان","گیلان","لرستان","مازندران","مرکزی","هرمزگان","همدان","یزد"
+];
+
+const SHIPPING_POST_COST = 150000;
+
 const DEFAULT_SETTINGS = {
-  shopName: "چاپ آسمانی",
+  shopName: "چاپ اسکای",
   tagline: "مرجع چاپ سابلیمیشن و خدمات چاپی",
   phone: "۰۹۲۱۶۱۳۹۵۳۱",
   whatsapp: "989216139531",
@@ -407,6 +416,10 @@ function AdminPanel({ settings, setSettings, onClose }) {
                   <span>📱 {o.phone}</span>
                   <button className="del-btn" onClick={() => removeOrder(o.id)}>🗑️</button>
                 </div>
+                {o.province && o.city && <div className="order-note">📍 {o.province}، {o.city}</div>}
+                {o.address && <div className="order-note">🏠 آدرس: {o.address}</div>}
+                {o.postal && <div className="order-note">📮 کدپستی: {o.postal}</div>}
+                {o.shipping && <div className="order-note">🚚 روش ارسال: {o.shipping}{o.shippingCost ? ` (${formatPrice(o.shippingCost)})` : ""}</div>}
                 <div className="order-cart">{o.items || "—"}</div>
                 <div className="order-total">
                   <strong>جمع کل: {formatPrice(o.total)}</strong>
@@ -441,7 +454,9 @@ function App() {
   const [fileName, setFileName] = useState("");
   const [receiptName, setReceiptName] = useState("");
   const [payMethod, setPayMethod] = useState("card");
-  const [form, setForm] = useState({ name: "", phone: "", desc: "" });
+  const [shipping, setShipping] = useState("");
+  const [success, setSuccess] = useState(null);
+  const [form, setForm] = useState({ name: "", phone: "", desc: "", address: "", postal: "", province: "", city: "" });
 
   useEffect(() => {
     const unsub = onSnapshot(collection(db, "products"), (snap) => {
@@ -477,33 +492,45 @@ function App() {
   };
   const changeQty = (id, d) =>
     setCart((prev) => prev.map((i) => (i.id === id ? { ...i, qty: i.qty + d } : i)).filter((i) => i.qty > 0));
-  const total = cart.reduce((s, i) => s + i.price * i.qty, 0);
+  const subtotal = cart.reduce((s, i) => s + i.price * i.qty, 0);
+  const shippingCost = shipping === "پست" ? SHIPPING_POST_COST : 0;
+  const total = subtotal + shippingCost;
   const cartCount = cart.reduce((s, i) => s + i.qty, 0);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!shipping) {
+      alert("لطفاً روش ارسال را انتخاب کنید!");
+      return;
+    }
     const items = cart.map((i) => `${i.icon} ${i.title} × ${i.qty} = ${formatPrice(i.price * i.qty)}`).join("\n");
     const payText = payMethod === "card"
       ? `کارت‌به‌کارت به شماره ${settings.cardNumber} (${settings.cardHolder})`
       : "پرداخت آنلاین از طریق درگاه";
-    const msg =
-      `🛒 سفارش جدید از سایت ${settings.shopName}\n\n` +
-      `👤 نام: ${form.name}\n📱 تماس: ${form.phone}\n` +
-      (form.desc ? `📝 توضیحات: ${form.desc}\n` : "") +
-      `\n📦 اقلام:\n${items}\n\n💰 جمع کل: ${formatPrice(total)}\n\n` +
-      `💳 روش پرداخت: ${payText}\n` +
-      (receiptName ? `🧾 رسید ارسال‌شده: ${receiptName}\n` : "") +
-      (fileName ? `📎 فایل طرح: ${fileName} (لطفاً در همین گفتگو ارسال شود)\n` : "");
-    window.open(`https://wa.me/${settings.whatsapp}?text=${encodeURIComponent(msg)}`, "_blank");
 
     try {
-      await addDoc(collection(db, "orders"), {
-        name: form.name, phone: form.phone, note: form.desc, file: fileName, receiptName, payMethod: payText,
+      const ref = await addDoc(collection(db, "orders"), {
+        name: form.name, phone: form.phone, province: form.province, city: form.city,
+        address: form.address, postal: form.postal, shipping, shippingCost,
+        note: form.desc, file: fileName, receiptName, payMethod: payText,
         items, total, date: new Date().toLocaleString("fa-IR"),
       });
-    } catch (err) { console.error(err); }
+      setSuccess({
+        code: ref.id.slice(-6).toUpperCase(),
+        name: form.name,
+        total,
+        shipping,
+        shippingCost,
+        items,
+        payText,
+      });
+    } catch (err) {
+      alert("خطا در ثبت سفارش: " + err.message + "\nلطفاً از پشتیبانی پیام دهید.");
+      return;
+    }
 
-    setOrderOpen(false); setCart([]); setFileName(""); setReceiptName(""); setForm({ name: "", phone: "", desc: "" });
+    setOrderOpen(false); setCart([]); setFileName(""); setReceiptName(""); setShipping("");
+    setForm({ name: "", phone: "", desc: "", address: "", postal: "", province: "", city: "" });
   };
 
   const handleLogin = (e) => {
@@ -514,12 +541,6 @@ function App() {
     } else {
       alert("رمز عبور اشتباه است!");
     }
-  };
-
-  const handleLogout = () => {
-    localStorage.removeItem("chapsky_admin");
-    setAuthOK(false);
-    setRoute("shop");
   };
 
   if (route === "admin") {
@@ -689,7 +710,7 @@ function App() {
                   </div>
                 ))}
                 <div className="cart-total">
-                  <strong>جمع کل:</strong><strong>{formatPrice(total)}</strong>
+                  <strong>جمع کل:</strong><strong>{formatPrice(subtotal)}</strong>
                 </div>
                 <button className="primary-button full" onClick={() => { setCartOpen(false); setOrderOpen(true); }}>
                   ادامه و تکمیل سفارش 📎
@@ -712,7 +733,36 @@ function App() {
               <input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="مثلاً: علی محمدی" />
               <label>شماره تماس</label>
               <input required type="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="۰۹۱۲..." />
-              <label style={{ marginTop: "18px" }}>روش پرداخت</label>
+
+              <label style={{ marginTop: "18px" }}>📍 استان</label>
+              <select required value={form.province} onChange={(e) => setForm({ ...form, province: e.target.value })}>
+                <option value="">انتخاب استان...</option>
+                {PROVINCES.map((p) => <option key={p} value={p}>{p}</option>)}
+              </select>
+              <label>🏙️ شهر</label>
+              <input required value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} placeholder="مثلاً: مراغه" />
+              <label>🏠 آدرس کامل (خیابان، پلاک، واحد)</label>
+              <textarea rows="2" required value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} placeholder="مثلاً: خیابان امام، پلاک ۱۲، واحد ۲" />
+              <label>📮 کدپستی</label>
+              <input required type="text" inputMode="numeric" value={form.postal} onChange={(e) => setForm({ ...form, postal: e.target.value })} placeholder="۱۰ رقمی" maxLength="10" />
+
+              <label style={{ marginTop: "18px" }}>🚚 روش ارسال</label>
+              <div className="pay-options">
+                <label className={"pay-option" + (shipping === "پست" ? " active" : "")}>
+                  <input type="radio" name="ship" checked={shipping === "پست"} onChange={() => setShipping("پست")} style={{ width: "auto" }} />
+                  📮 پست پیشتاز ({formatPrice(SHIPPING_POST_COST)})
+                </label>
+                <label className={"pay-option" + (shipping === "چاپار" ? " active" : "")}>
+                  <input type="radio" name="ship" checked={shipping === "چاپار"} onChange={() => setShipping("چاپار")} style={{ width: "auto" }} />
+                  🚚 چاپار (رایگان)
+                </label>
+                <label className={"pay-option" + (shipping === "تیپاکس" ? " active" : "")}>
+                  <input type="radio" name="ship" checked={shipping === "تیپاکس"} onChange={() => setShipping("تیپاکس")} style={{ width: "auto" }} />
+                  🚛 تیپاکس (رایگان)
+                </label>
+              </div>
+
+              <label style={{ marginTop: "14px" }}>روش پرداخت</label>
               <div className="pay-options">
                 <label className={"pay-option" + (payMethod === "card" ? " active" : "")}>
                   <input type="radio" name="pay" checked={payMethod === "card"} onChange={() => setPayMethod("card")} style={{ width: "auto" }} />
@@ -725,33 +775,64 @@ function App() {
                   </label>
                 ) : null}
               </div>
+
               {payMethod === "card" ? (
                 <div className="card-box">
                   <p style={{ fontWeight: "bold", marginBottom: "6px" }}>🏦 مبلغ را به کارت زیر واریز کنید:</p>
                   <p style={{ fontSize: "18px", letterSpacing: "2px", color: "var(--main)", fontWeight: "800", margin: "8px 0" }}>{settings.cardNumber}</p>
                   <p style={{ fontSize: "14px", color: "#555" }}>به نام: <strong>{settings.cardHolder}</strong></p>
-                  <p style={{ fontSize: "13px", color: "#777", marginTop: "6px" }}>جمع قابل پرداخت: <strong>{formatPrice(total)}</strong></p>
+                  <p style={{ fontSize: "13px", color: "#777", marginTop: "6px" }}>
+                    {shippingCost > 0 ? (
+                      <>جمع کالاها: {formatPrice(subtotal)} + هزینه ارسال: {formatPrice(shippingCost)} = <strong>{formatPrice(total)}</strong></>
+                    ) : (
+                      <>جمع قابل پرداخت: <strong>{formatPrice(total)}</strong></>
+                    )}
+                  </p>
                 </div>
               ) : (
                 <div className="card-box">
                   <p>🔗 به درگاه پرداخت آنلاین منتقل می‌شوید.</p>
                 </div>
               )}
+
               <label>🧾 آپلود تصویر رسید پرداخت (عکس)</label>
               <div className="file-upload">
                 <input type="file" id="receipt-file" accept="image/*" onChange={(e) => setReceiptName(e.target.files ? e.target.files[0].name : "")} />
                 <label htmlFor="receipt-file" className="file-label">{receiptName ? `🧾 ${receiptName}` : "⬆️ انتخاب عکس رسید"}</label>
               </div>
               <label>توضیحات سفارش (تعداد، سایز، متن چاپ و...)</label>
-              <textarea rows="3" value={form.desc} onChange={(e) => setForm({ ...form, desc: e.target.value })} placeholder="مثلاً: ۲۰ عدد ماگ با لوگوی شرکت" />
+              <textarea rows="2" value={form.desc} onChange={(e) => setForm({ ...form, desc: e.target.value })} placeholder="مثلاً: ۲۰ عدد ماگ با لوگوی شرکت" />
               <label>فایل طرح شما (عکس، PDF، PSD...)</label>
               <div className="file-upload">
                 <input type="file" id="design-file" accept="image/*,.pdf,.psd,.ai,.zip" onChange={(e) => setFileName(e.target.files ? e.target.files[0].name : "")} />
                 <label htmlFor="design-file" className="file-label">{fileName ? `📄 ${fileName}` : "⬆️ انتخاب فایل طرح"}</label>
               </div>
-              <button type="submit" className="primary-button full">ارسال سفارش ✅</button>
-              <small className="form-note">سفارش به واتساپ و پنل مدیریت شما ارسال می‌شود. عکس رسید را پس از باز شدن واتساپ ارسال کنید.</small>
+              <button type="submit" className="primary-button full">ثبت سفارش ✅</button>
+              <small className="form-note">سفارش شما مستقیماً در سامانه ثبت می‌شود و پشتیبانی با شما تماس می‌گیرد.</small>
             </form>
+          </div>
+        </div>
+      )}
+
+      {success && (
+        <div className="overlay center" onClick={() => setSuccess(null)}>
+          <div className="modal success-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="cart-header">
+              <h3>✅ سفارش با موفقیت ثبت شد!</h3>
+              <button className="close-btn" onClick={() => setSuccess(null)}>✕</button>
+            </div>
+            <div className="success-body">
+              <p className="success-code">کد پیگیری: <strong>{success.code}</strong></p>
+              <p>👤 {success.name}</p>
+              <p className="success-items">{success.items}</p>
+              <p>🚚 روش ارسال: {success.shipping}{success.shippingCost ? ` (${formatPrice(success.shippingCost)})` : " (رایگان)"}</p>
+              <p className="success-total">💰 مبلغ قابل پرداخت: <strong>{formatPrice(success.total)}</strong></p>
+              <p style={{ fontSize: "13px", color: "#777", marginTop: "10px" }}>
+                💳 {success.payText}
+              </p>
+              <p style={{ fontSize: "13px", color: "#777" }}>پشتیبانی در اسرع وقت با شما تماس می‌گیرد.</p>
+            </div>
+            <button className="primary-button full" onClick={() => setSuccess(null)}>باشه</button>
           </div>
         </div>
       )}
