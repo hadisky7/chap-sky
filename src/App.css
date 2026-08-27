@@ -588,4 +588,25 @@ nav a:hover { background: #f0f2f7; color: var(--main); }
   .products-grid { grid-template-columns: 1fr; }
   .tabs { gap: 6px; }
   .tab { padding: 8px 12px; font-size: 13px; }
+}/* ===== یادداشت طراحی و متن جایگزین ===== */
+.design-note {
+  background: #eef2ff;
+  border: 1px dashed var(--main);
+  border-radius: 10px;
+  padding: 12px;
+  font-size: 13px;
+  color: #333;
+  line-height: 1.8;
+  margin-bottom: 6px;
 }
+.alt-contact {
+  background: #fff7ed;
+  border: 1px dashed #f59e0b;
+  border-radius: 10px;
+  padding: 12px;
+  font-size: 13px;
+  color: #333;
+  line-height: 1.8;
+  margin-top: 6px;
+}
+.alt-contact strong { color: var(--main); }
