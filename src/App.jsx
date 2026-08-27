@@ -17,6 +17,8 @@ const ADMIN_PASSWORD = "@Hadi6977";
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
+const DESIGN_NOTE = "🧑‍🎨 طرح شما طراحی می‌شود و پیش از چاپ، برای تأیید برایتان ارسال می‌گردد. پس از تأیید شما، چاپ انجام می‌شود.";
+
 const PROVINCES = [
   "آذربایجان شرقی","آذربایجان غربی","اردبیل","اصفهان","البرز","ایلام","بوشهر","تهران",
   "چهارمحال و بختیاری","خراسان جنوبی","خراسان رضوی","خراسان شمالی","خوزستان","زنجان",
@@ -31,11 +33,11 @@ const DEFAULT_SETTINGS = {
   tagline: "مرجع چاپ سابلیمیشن و خدمات چاپی",
   phone: "۰۹۲۱۶۱۳۹۵۳۱",
   whatsapp: "989216139531",
-  address: "مراغه، میدان مصلی، جنب داروخانه هشترودی",
-  instagram: "nashrsky",
   telegram: "nashrsky",
   rubika: "nashrsky",
   bale: "nashrsky",
+  address: "مراغه، میدان مصلی، جنب داروخانه هشترودی",
+  instagram: "nashrsky",
   heroTitle1: "ایده‌ات را",
   heroTitle2: "چاپ کن!",
   heroText: "چاپ سابلیمیشن حرفه‌ای روی ماگ، تیشرت، پازل، تخته شاسی، پرچم و رومیزی + خدمات چاپ فاکتور، تراکت و کارت ویزیت — با آپلود مستقیم فایل شما.",
@@ -78,7 +80,7 @@ const defaultFeatures = [
 const defaultSteps = [
   { num: "۱", title: "انتخاب محصول", desc: "محصول و تعداد دلخواه را انتخاب کنید." },
   { num: "۲", title: "آپلود طرح", desc: "فایل عکس یا طرح خود را همراه سفارش ارسال کنید." },
-  { num: "۳", title: "تکمیل سفارش", desc: "پرداخت را انجام دهید و رسید ارسال کنید." },
+  { num: "۳", title: "تأیید طرح و چاپ", desc: "طرح برایتان ارسال می‌شود، تأیید کنید و چاپ انجام می‌شود." },
 ];
 
 function formatPrice(n) {
@@ -268,6 +270,10 @@ function AdminPanel({ settings, setSettings, onClose }) {
             <input value={sform.phone || ""} onChange={(e) => setSform({ ...sform, phone: e.target.value })} />
             <label>شماره واتساپ (با 98)</label>
             <input value={sform.whatsapp || ""} onChange={(e) => setSform({ ...sform, whatsapp: e.target.value })} />
+            <label>آیدی تلگرام (بدون @)</label>
+            <input value={sform.telegram || ""} onChange={(e) => setSform({ ...sform, telegram: e.target.value })} />
+            <label>آیدی روبیکا (بدون @)</label>
+            <input value={sform.rubika || ""} onChange={(e) => setSform({ ...sform, rubika: e.target.value })} />
             <label>آدرس فروشگاه</label>
             <input value={sform.address || ""} onChange={(e) => setSform({ ...sform, address: e.target.value })} />
 
@@ -278,10 +284,6 @@ function AdminPanel({ settings, setSettings, onClose }) {
             <h4 style={{ margin: "16px 0 6px", color: "var(--main)" }}>شبکه‌های اجتماعی</h4>
             <div className="form-row">
               <div><label>اینستاگرام</label><input value={sform.instagram || ""} onChange={(e) => setSform({ ...sform, instagram: e.target.value })} /></div>
-              <div><label>تلگرام</label><input value={sform.telegram || ""} onChange={(e) => setSform({ ...sform, telegram: e.target.value })} /></div>
-            </div>
-            <div className="form-row">
-              <div><label>روبیکا</label><input value={sform.rubika || ""} onChange={(e) => setSform({ ...sform, rubika: e.target.value })} /></div>
               <div><label>بله</label><input value={sform.bale || ""} onChange={(e) => setSform({ ...sform, bale: e.target.value })} /></div>
             </div>
 
@@ -507,26 +509,38 @@ function App() {
     const payText = payMethod === "card"
       ? `کارت‌به‌کارت به شماره ${settings.cardNumber} (${settings.cardHolder})`
       : "پرداخت آنلاین از طریق درگاه";
+    const body =
+      `🛒 سفارش جدید از سایت ${settings.shopName}\n\n` +
+      `👤 نام: ${form.name}\n📱 تماس: ${form.phone}\n` +
+      `📍 استان: ${form.province}\n🏙️ شهر: ${form.city}\n` +
+      `🏠 آدرس: ${form.address}\n📮 کدپستی: ${form.postal}\n` +
+      `🚚 روش ارسال: ${shipping}${shippingCost ? ` (${formatPrice(shippingCost)})` : " (رایگان)"}\n` +
+      (form.desc ? `📝 توضیحات: ${form.desc}\n` : "") +
+      `\n📦 اقلام:\n${items}\n` +
+      (shippingCost ? `\n🚚 هزینه ارسال: ${formatPrice(shippingCost)}\n` : "") +
+      `\n💰 جمع کل: ${formatPrice(total)}\n` +
+      `💳 روش پرداخت: ${payText}\n` +
+      (receiptName ? `🧾 رسید ارسال‌شده: ${receiptName}\n` : "") +
+      (fileName ? `📎 فایل طرح: ${fileName}\n` : "") +
+      `\n${DESIGN_NOTE}`;
+
+    // ارسال به واتساپ
+    window.open(`https://wa.me/${settings.whatsapp}?text=${encodeURIComponent(body)}`, "_blank");
+    // ارسال به تلگرام
+    window.open(`https://t.me/${settings.telegram}?text=${encodeURIComponent(body)}`, "_blank");
+    // ارسال به روبیکا
+    window.open(`https://rubika.ir/${settings.rubika}?text=${encodeURIComponent(body)}`, "_blank");
 
     try {
-      const ref = await addDoc(collection(db, "orders"), {
+      await addDoc(collection(db, "orders"), {
         name: form.name, phone: form.phone, province: form.province, city: form.city,
         address: form.address, postal: form.postal, shipping, shippingCost,
         note: form.desc, file: fileName, receiptName, payMethod: payText,
         items, total, date: new Date().toLocaleString("fa-IR"),
       });
-      setSuccess({
-        code: ref.id.slice(-6).toUpperCase(),
-        name: form.name,
-        total,
-        shipping,
-        shippingCost,
-        items,
-        payText,
-      });
+      setSuccess({ name: form.name, total, shipping, shippingCost, items, payText });
     } catch (err) {
-      alert("خطا در ثبت سفارش: " + err.message + "\nلطفاً از پشتیبانی پیام دهید.");
-      return;
+      alert("خطا در ثبت سفارش در سامانه: " + err.message);
     }
 
     setOrderOpen(false); setCart([]); setFileName(""); setReceiptName(""); setShipping("");
@@ -729,6 +743,7 @@ function App() {
               <button className="close-btn" onClick={() => setOrderOpen(false)}>✕</button>
             </div>
             <form onSubmit={handleSubmit} className="order-form">
+              <div className="design-note">{DESIGN_NOTE}</div>
               <label>نام و نام خانوادگی</label>
               <input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="مثلاً: علی محمدی" />
               <label>شماره تماس</label>
@@ -807,8 +822,8 @@ function App() {
                 <input type="file" id="design-file" accept="image/*,.pdf,.psd,.ai,.zip" onChange={(e) => setFileName(e.target.files ? e.target.files[0].name : "")} />
                 <label htmlFor="design-file" className="file-label">{fileName ? `📄 ${fileName}` : "⬆️ انتخاب فایل طرح"}</label>
               </div>
-              <button type="submit" className="primary-button full">ثبت سفارش ✅</button>
-              <small className="form-note">سفارش شما مستقیماً در سامانه ثبت می‌شود و پشتیبانی با شما تماس می‌گیرد.</small>
+              <button type="submit" className="primary-button full">ارسال سفارش ✅</button>
+              <small className="form-note">⚠️ با ارسال سفارش، پنجره‌های واتساپ، تلگرام و روبیکا باز می‌شود — لطفاً فایل طرح و عکس رسید را در همان‌ها ارسال کنید.</small>
             </form>
           </div>
         </div>
@@ -818,19 +833,16 @@ function App() {
         <div className="overlay center" onClick={() => setSuccess(null)}>
           <div className="modal success-modal" onClick={(e) => e.stopPropagation()}>
             <div className="cart-header">
-              <h3>✅ سفارش با موفقیت ثبت شد!</h3>
+              <h3>✅ سفارش شما ثبت شد!</h3>
               <button className="close-btn" onClick={() => setSuccess(null)}>✕</button>
             </div>
             <div className="success-body">
-              <p className="success-code">کد پیگیری: <strong>{success.code}</strong></p>
               <p>👤 {success.name}</p>
               <p className="success-items">{success.items}</p>
               <p>🚚 روش ارسال: {success.shipping}{success.shippingCost ? ` (${formatPrice(success.shippingCost)})` : " (رایگان)"}</p>
-              <p className="success-total">💰 مبلغ قابل پرداخت: <strong>{formatPrice(success.total)}</strong></p>
-              <p style={{ fontSize: "13px", color: "#777", marginTop: "10px" }}>
-                💳 {success.payText}
-              </p>
-              <p style={{ fontSize: "13px", color: "#777" }}>پشتیبانی در اسرع وقت با شما تماس می‌گیرد.</p>
+              <p className="success-total">💰 مبلغ: <strong>{formatPrice(success.total)}</strong></p>
+              <p style={{ fontSize: "13px", color: "#777", marginTop: "10px" }}>💳 {success.payText}</p>
+              <p style={{ fontSize: "13px", color: "var(--main)", marginTop: "10px" }}>{DESIGN_NOTE}</p>
             </div>
             <button className="primary-button full" onClick={() => setSuccess(null)}>باشه</button>
           </div>
