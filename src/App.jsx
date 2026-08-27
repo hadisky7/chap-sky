@@ -242,7 +242,7 @@ function AdminPanel({ settings, setSettings, onClose }) {
             <label>شماره تماس</label><input value={sform.phone || ""} onChange={(e) => setSform({ ...sform, phone: e.target.value })} />
             <label>شماره واتساپ (با 98)</label><input value={sform.whatsapp || ""} onChange={(e) => setSform({ ...sform, whatsapp: e.target.value })} />
             <label>آیدی تلگرام (بدون @)</label><input value={sform.telegram || ""} onChange={(e) => setSform({ ...sform, telegram: e.target.value })} />
-            <label>آیدی روبیکا (بدون @)</label><input value={sform.rubika || ""} onChange={(e) => setSform({ ...sform, rubika: e.target.value })} />
+            <label>آیدیروبیکا (بدون @)</label><input value={sform.rubika || ""} onChange={(e) => setSform({ ...sform, rubika: e.target.value })} />
             <label>آدرس فروشگاه</label><input value={sform.address || ""} onChange={(e) => setSform({ ...sform, address: e.target.value })} />
             <label style={{ display: "flex", alignItems: "center", gap: "10px", marginTop: "12px" }}>
               <input type="checkbox" checked={!!sform.showProductLogo} onChange={(e) => setSform({ ...sform, showProductLogo: e.target.checked })} style={{ width: "auto" }} />
@@ -611,11 +611,13 @@ function App() {
               </div>
               <button type="submit" className="primary-button full">ارسال سفارش ✅</button>
               <div className="alt-contact">
-                📢 در صورت عدم دسترسی به واتساپ، از طریق <strong>روبیکا</strong> یا <strong>تلگرام</strong> به آیدی <strong>@nashrsky</strong> یا شماره <strong>۰۹۲۱۶۱۳۹۵۳۱</strong> پیام دهید.
+                📢 در صورت عدم دسترسی به واتساپ، از طریق <strong>تلگرام</strong> به آیدی <strong>@nashrsky</strong> پیام دهید.
                 <div className="alt-buttons">
                   <a className="alt-btn tg" href={`https://t.me/${settings.telegram}`} target="_blank" rel="noreferrer">✈️ ارسال از تلگرام</a>
-                  <a className="alt-btn rb" href={`https://rubika.ir/${settings.rubika}`} target="_blank" rel="noreferrer">🔵 ارسال از روبیکا</a>
                 </div>
+                <p className="rubika-note">
+                  🔵 اگر تلگرام هم ندارید، می‌توانید از طریق <strong>روبیکا</strong> به شماره <strong>۰۹۲۱۶۱۳۹۵۳۱</strong> یا آیدی <strong>@nashrsky</strong> پیام دهید.
+                </p>
               </div>
               <small className="form-note">⚠️ با ارسال، پنجره‌ی واتساپ باز می‌شود. فایل طرح و عکس رسید را در همان‌جا ارسال کنید.</small>
             </form>
@@ -639,9 +641,10 @@ function App() {
               در صورت عدم دسترسی به واتساپ:
               <div className="alt-buttons">
                 <a className="alt-btn tg" href={`https://t.me/${settings.telegram}`} target="_blank" rel="noreferrer">✈️ ارسال از تلگرام</a>
-                <a className="alt-btn rb" href={`https://rubika.ir/${settings.rubika}`} target="_blank" rel="noreferrer">🔵 ارسال از روبیکا</a>
               </div>
-              <p style={{ fontSize: "13px", color: "#777", marginTop: "8px", textAlign: "center" }}>آیدی @nashrsky | 📱 ۰۹۲۱۶۱۳۹۵۳۱</p>
+              <p className="rubika-note">
+                🔵 اگر تلگرام هم ندارید، از <strong>روبیکا</strong> به شماره <strong>۰۹۲۱۶۱۳۹۵۳۱</strong> یا آیدی <strong>@nashrsky</strong> پیام دهید.
+              </p>
             </div>
             <button className="primary-button full" onClick={() => setSuccess(null)} style={{ marginTop: "12px" }}>باشه</button>
           </div>
